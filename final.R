@@ -101,7 +101,7 @@ logistic_model <- "model{
 
 for(i in 1:n){
 Y[i] ~ dbern(q[i])
-logit(q[i]) = alpha[i] + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + gamma[1]*X[i,4]
+logit(q[i]) <- alpha[i] + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + gamma[1]*X[i,4]
       + gamma[2]*X[i,5] + gamma[3]*X[i,6]
 }
 
@@ -131,13 +131,15 @@ mub[j] ~ dnorm(0,0.01)
 }
 
 k = p+0.1
-sigma[1:p,1:p] ~ dwish(R[,],k)
 for(j1 in 1:p){for(j2 in 1:p){R[j1,j2]<-0.1*equals(j1,j2)}} #R is diagonal
+sigma[1:p,1:p] ~ dwish(R[,],k)
 
 }"
 
 
 library(rjags)
+p=3
+R <- diag(1/(p+0.1),p)
 
 datlist   <- list(Y=Y,n=n,X=X,p=3)
 model <- jags.model(textConnection(logistic_model),data = datlist,n.chains=1)
