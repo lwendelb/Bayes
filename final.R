@@ -40,6 +40,9 @@ convert_ltv <- function(ltv){
 ######### Parker's code
 library(doBy)
 dat = data3
+dat_sampleloans <- read.csv("sample_loans.csv")
+dat_sampleloans <- dat_sampleloans[,c(2,7)]
+dat = merge(dat,dat_sampleloans,by.x="loan_number", by.y="loan_number")
 
 # convert date to numeric
 dat$num_date <- as.Date(dat$date, format="%m/%d/%Y")
@@ -58,7 +61,7 @@ dat$flag <- ifelse(dat$delinq_status == "X" | dat$delinq_status == "0", 0, 1)
 
 
 # for_mcmc changed
-for_mcmc <- summaryBy(flag ~ loan_number + ltv + fico + dti + acq_quarter + num_date.min + msa, FUN=c(max), data=dat)
+for_mcmc <- summaryBy(flag ~ loan_number + ltv + fico + dti + acq_quarter + num_date.min + zip3, FUN=c(max), data=dat)
 for_mcmc$acq_year <- as.numeric(substr(as.character(for_mcmc$acq_quarter), 1, 4))
 
 origin <- "1970-01-01"
@@ -84,12 +87,14 @@ for_mcmc$yq <- as.Date(as.yearqtr(for_mcmc$yq_temp, format = "Q%q/%Y"))
 
 
 ##### housing data things
-housingdat <- read.csv("housing next five flag.csv")
+housingdat <- read.csv("housing next five flag - zip3.csv")
 
-mcmc_data <- merge(for_mcmc, housingdat, by.x=c("msa","yq"), by.y=c("msa","yq"),all.x=T)
+for_mcmc <- merge(for_mcmc, housingdat, by.x=c("zip3","yq"), by.y=c("zip3","yq"),all.x=T)
 
-Y = for_mcmc[,6]
-X = cbind(for_mcmc$ltv,for_mcmc$fico,for_mcmc$dti,for_mcmc$early_orig,for_mcmc$mid_orig,for_mcmc$late_orig)
+for_mcmc <- for_mcmc[!is.na(for_mcmc$dec_next_five),]
+
+Y = for_mcmc$flag.max
+X = cbind(for_mcmc$ltv,for_mcmc$fico,for_mcmc$dti,for_mcmc$early_orig,for_mcmc$dec_next_five,for_mcmc$mid_orig,for_mcmc$late_orig)
 
 n = length(Y)
 
@@ -101,7 +106,7 @@ logistic_model <- "model{
 
 for(i in 1:n){
 Y[i] ~ dbern(q[i])
-logit(q[i]) <- alpha[i] + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + gamma[1]*X[i,4]
+logit(q[i]) <- alpha + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + beta[4]*X[i,4]+gamma[1]*X[i,4]
       + gamma[2]*X[i,5] + gamma[3]*X[i,6]
 }
 
@@ -116,19 +121,27 @@ beta[1:p] ~ dmnorm(mub[],sigma[,])
 
 #Priors
 
-for(i in 1:n){
-alpha[i] ~ dnorm(0,0.01)
-}
+
+alpha~ dnorm(5.2576775307,0.1)
+#alpha~ dnorm(0,0.1)
 
 
 for(j in 1:3){
-mug[j] ~ dnorm(0,0.01)
+#mug[j] ~ dnorm(0,0.01)
 taug[j] ~ dgamma(0.01,0.01)
 }
 
-for(j in 1:p){
-mub[j] ~ dnorm(0,0.01)
-}
+mug[1] ~ dnorm(0.5932233559,0.1)
+mug[2] ~ dnorm(0.5718783093,0.1)
+mug[3] ~ dnorm(0,0.1)
+
+mub[1] ~ dnorm(0.0361957469,0.1)
+mub[2] ~ dnorm(-0.0146455516,0.1)
+mub[3] ~ dnorm(0.0006081439,0.1)
+mub[4] ~ dnorm(0.1294116858,0.1)
+#for(j in 1:p){
+#mub[j] ~ dnorm(0,0.01)
+#}
 
 k = p+0.1
 for(j1 in 1:p){for(j2 in 1:p){R[j1,j2]<-0.1*equals(j1,j2)}} #R is diagonal
@@ -138,17 +151,23 @@ sigma[1:p,1:p] ~ dwish(R[,],k)
 
 
 library(rjags)
-p=3
+p=4
 R <- diag(1/(p+0.1),p)
+I = diag(1,p)
 
-datlist   <- list(Y=Y,n=n,X=X,p=3)
+datlist   <- list(Y=Y,n=n,X=X,p=p)
 model <- jags.model(textConnection(logistic_model),data = datlist,n.chains=1)
 
-update(model, 10000)
+update(model, 20000)
 
 samp <- coda.samples(model, 
-                     variable.names=c("beta","gamma"), 
+                     variable.names=c("alpha","beta","gamma"), 
                      n.iter=50000)
 
 geweke.diag(samp)
 plot(samp)
+
+mod <- glm(Y ~ X, family=binomial(link="logit"))
+summary(mod)
+mod$coefficients
+length(X[,7])
