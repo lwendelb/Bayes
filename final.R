@@ -1,6 +1,4 @@
-data = read.csv("sample_loans.csv")
-data2 = read.csv("HPI_AT_metro.csv")
-data3 = read.csv("loan_data.csv")
+data3 = read.csv("loan data.csv")
 head(data3)
 
 e = 177
@@ -40,7 +38,7 @@ convert_ltv <- function(ltv){
 ######### Parker's code
 library(doBy)
 dat = data3
-dat_sampleloans <- read.csv("sample_loans.csv")
+dat_sampleloans <- read.csv("sample loans.csv")
 dat_sampleloans <- dat_sampleloans[,c(2,7)]
 dat = merge(dat,dat_sampleloans,by.x="loan_number", by.y="loan_number")
 
@@ -74,7 +72,8 @@ for_mcmc$late_orig <- ifelse(for_mcmc$acq_year >= 2008, 1, 0)
 
 for_mcmc$rand <- runif(nrow(for_mcmc), 0, 1)
 for_mcmc <- for_mcmc[order(for_mcmc$rand),]
-for_mcmc <- for_mcmc[1:1000,]
+#for_mcmc <- for_mcmc[1:1000,]
+
 
 for_mcmc$ltv <- ifelse(for_mcmc$ltv<=80,80,for_mcmc$ltv)
 
