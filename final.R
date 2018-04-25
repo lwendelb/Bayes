@@ -153,7 +153,6 @@ sigma[1:p,1:p] ~ dwish(R[,],k)
 
 
 library(rjags)
-p=4
 R <- diag(1/(p+0.1),p)
 I = diag(1,p)
 
