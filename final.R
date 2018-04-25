@@ -94,8 +94,8 @@ for_mcmc <- merge(for_mcmc, housingdat, by.x=c("zip3","yq"), by.y=c("zip3","yq")
 for_mcmc <- for_mcmc[!is.na(for_mcmc$dec_next_five),]
 
 Y = for_mcmc$flag.max
-X = cbind(for_mcmc$ltv,for_mcmc$fico,for_mcmc$dti,for_mcmc$early_orig,for_mcmc$dec_next_five,for_mcmc$mid_orig,for_mcmc$late_orig)
-
+Xb = cbind(for_mcmc$ltv,for_mcmc$fico,for_mcmc$dti,for_mcmc$dec_next_five)
+Xg = cbind(for_mcmc$early_orig,for_mcmc$mid_orig,for_mcmc$late_orig)
 n = length(Y)
 
 # Logistic regression:
@@ -106,8 +106,10 @@ logistic_model <- "model{
 
 for(i in 1:n){
 Y[i] ~ dbern(q[i])
-logit(q[i]) <- alpha + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + beta[4]*X[i,4]+gamma[1]*X[i,4]
-      + gamma[2]*X[i,5] + gamma[3]*X[i,6]
+#logit(q[i]) <- alpha + beta[1]*X[i,1] + beta[2]*X[i,2] + beta[3]*X[i,3] + beta[4]*X[i,4]+gamma[1]*X[i,5]
+#      + gamma[2]*X[i,6] + gamma[3]*X[i,7]
+#}
+logit(q[i]) <- alpha + inprod(Xb[i,],beta[])+inprod(Xg[i,],gamma[])
 }
 
 # Random Effects
@@ -155,7 +157,7 @@ p=4
 R <- diag(1/(p+0.1),p)
 I = diag(1,p)
 
-datlist   <- list(Y=Y,n=n,X=X,p=p)
+datlist   <- list(Y=Y,n=n,Xb=Xb,Xg=Xg,p=dim(Xb[2]))
 model <- jags.model(textConnection(logistic_model),data = datlist,n.chains=1)
 
 update(model, 20000)
